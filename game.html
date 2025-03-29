@@ -2,10 +2,223 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>انضم إلى اللعبة</title>
+  <title>اللعب - الصور المتطابقة</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: linear-gradient(to bottom, #1b0a10, #3a1e24);
+      color: white;
+      padding: 20px;
+    }
+    #startScreen, #gameBoard {
+      display: none;
+    }
+    .input-box {
+      background-color: #fff3;
+      padding: 20px;
+      border-radius: 15px;
+      display: inline-block;
+    }
+    input {
+      padding: 10px;
+      width: 80%;
+      margin: 10px;
+      font-size: 18px;
+      border-radius: 10px;
+      border: none;
+    }
+    button {
+      padding: 12px 25px;
+      background-color: gold;
+      border: none;
+      border-radius: 15px;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .card {
+      width: 60px;
+      height: 60px;
+      background-color: white;
+      border-radius: 10px;
+      font-size: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .hidden {
+      background-color: #999;
+      color: #999;
+    }
+    #status {
+      margin-top: 15px;
+      font-size: 18px;
+      color: yellow;
+    }
+    #finalResult {
+      font-size: 22px;
+      margin-top: 20px;
+      color: gold;
+    }
+  </style>
 </head>
 <body>
-  <h1>يرجى إدخال اسمك للانضمام إلى الجلسة</h1>
+  <h1>لعبة الصور المتطابقة</h1>
+  <div id="startScreen" class="input-box">
+    <p>ادخل اسمك للانضمام:</p>
+    <input type="text" id="playerNameInput" placeholder="اسمك هنا">
+    <button onclick="joinGame()">انضمام</button>
+  </div>
+
+  <div id="waiting">جاري انتظار اللاعب الآخر...</div>
+
+  <div id="gameBoard">
+    <div>
+      <span>الاسم: <strong id="playerNameDisplay"></strong></span>
+      <br>
+      <span>النقاط: <strong id="score">0</strong></span>
+      <br>
+      <span>الوقت: <strong id="timer">--</strong></span>
+    </div>
+    <div class="grid" id="cardGrid"></div>
+    <div id="status"></div>
+    <div id="finalResult"></div>
+  </div>
+
+  <script>
+    const socket = io();
+    const session = new URLSearchParams(window.location.search).get('session');
+    let playerName = '';
+    let score = 0;
+    let firstCard = null;
+    let secondCard = null;
+    let lock = false;
+    let matched = 0;
+    let totalPairs = 0;
+    let gameTime = 0;
+    let finished = false;
+    let startTime, endTime;
+
+    document.getElementById('startScreen').style.display = 'block';
+
+    function joinGame() {
+      const nameInput = document.getElementById('playerNameInput').value.trim();
+      if (!nameInput) return alert("يرجى إدخال اسمك");
+      playerName = nameInput;
+      document.getElementById('playerNameDisplay').textContent = playerName;
+      document.getElementById('startScreen').style.display = 'none';
+      document.getElementById('waiting').style.display = 'block';
+      socket.emit('joinSession', { sessionId: session, name: playerName });
+    }
+
+    socket.on('playerJoined', names => {
+      document.getElementById('waiting').textContent = `تم الانضمام: ${names.join(' و ')}`;
+    });
+
+    socket.on('readyToStart', settings => {
+      totalPairs = settings.cards / 2;
+      gameTime = settings.time;
+      socket.emit('startGameNow', session);
+    });
+
+    socket.on('startGame', () => {
+      document.getElementById('waiting').style.display = 'none';
+      document.getElementById('gameBoard').style.display = 'block';
+      initGame();
+    });
+
+    function initGame() {
+      const emojis = ['🍕','🎯','🧀','🧃','🍊','🥄','🧉','🧢','🦋','🍰','🥇','🕶️','⚙️','☕','⛱️','🌟','🧊','🍩','🍓','🥤'];
+      const grid = document.getElementById('cardGrid');
+      let selected = emojis.slice(0, totalPairs);
+      let cards = [...selected, ...selected];
+      cards.sort(() => Math.random() - 0.5);
+
+      grid.innerHTML = '';
+      cards.forEach((emoji, index) => {
+        const card = document.createElement('div');
+        card.className = 'card hidden';
+        card.dataset.value = emoji;
+        card.dataset.index = index;
+        card.innerHTML = emoji;
+        card.onclick = () => flipCard(card);
+        grid.appendChild(card);
+      });
+
+      startTime = Date.now();
+      startTimer(gameTime);
+    }
+
+    function flipCard(card) {
+      if (lock || !card.classList.contains('hidden')) return;
+      card.classList.remove('hidden');
+
+      if (!firstCard) {
+        firstCard = card;
+      } else {
+        secondCard = card;
+        checkMatch();
+      }
+    }
+
+    function checkMatch() {
+      lock = true;
+      if (firstCard.dataset.value === secondCard.dataset.value) {
+        matched++;
+        score++;
+        document.getElementById('score').textContent = score;
+        firstCard = null;
+        secondCard = null;
+        lock = false;
+        if (matched === totalPairs) {
+          endGame(true);
+        }
+      } else {
+        setTimeout(() => {
+          firstCard.classList.add('hidden');
+          secondCard.classList.add('hidden');
+          firstCard = null;
+          secondCard = null;
+          lock = false;
+        }, 1000);
+      }
+    }
+
+    function startTimer(duration) {
+      let timeLeft = duration;
+      const timerEl = document.getElementById('timer');
+      const interval = setInterval(() => {
+        timerEl.textContent = timeLeft;
+        if (--timeLeft < 0 || finished) {
+          clearInterval(interval);
+          if (!finished) endGame(false);
+        }
+      }, 1000);
+    }
+
+    function endGame(completed) {
+      finished = true;
+      endTime = Date.now();
+      const timeTaken = Math.floor((endTime - startTime) / 1000);
+      document.getElementById('status').textContent = completed ? 'اكتملت كل الصور!' : 'انتهى الوقت!';
+      socket.emit('gameFinished', { sessionId: session, name: playerName, score, time: timeTaken });
+    }
+
+    socket.on('finalResult', result => {
+      const msg = result.tie ? 'تعادل بين اللاعبين!' :
+        (result.winner === playerName ? 'مبروك! أنت الفائز!' : `خسرت! الفائز هو: ${result.winner}`);
+      document.getElementById('finalResult').textContent = msg;
+    });
+  </script>
 </body>
 </html>
