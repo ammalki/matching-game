@@ -13,10 +13,6 @@
       color: white;
       padding: 20px;
     }
-    .hidden {
-      background-color: #999;
-      color: transparent;
-    }
     .card {
       width: 60px;
       height: 60px;
@@ -41,9 +37,19 @@
     #info {
       margin-top: 10px;
     }
-    #finalResult {
+    #results {
+      display: none;
+      margin-top: 30px;
+    }
+    .player-box {
+      background: #fff2;
+      padding: 15px;
+      margin: 10px;
+      border-radius: 12px;
+    }
+    #winner {
       font-size: 22px;
-      margin-top: 20px;
+      margin-top: 15px;
       color: gold;
     }
   </style>
@@ -60,7 +66,12 @@
       الوقت: <span id="timer">--</span>
     </div>
     <div class="grid" id="cardGrid"></div>
-    <div id="finalResult"></div>
+  </div>
+
+  <div id="results">
+    <div class="player-box" id="player1Result"></div>
+    <div class="player-box" id="player2Result"></div>
+    <div id="winner"></div>
   </div>
 
   <script>
@@ -108,7 +119,7 @@
       grid.innerHTML = '';
       cards.forEach((emoji, index) => {
         const card = document.createElement('div');
-        card.className = 'card hidden';
+        card.className = 'card';
         card.dataset.value = emoji;
         card.dataset.index = index;
         card.innerText = emoji;
@@ -121,8 +132,8 @@
     }
 
     function handleCardClick(card) {
-      if (lock || !card.classList.contains('hidden')) return;
-      card.classList.remove('hidden');
+      if (lock || card.style.visibility === 'hidden') return;
+      card.style.backgroundColor = '#ddd';
 
       if (!firstCard) {
         firstCard = card;
@@ -138,8 +149,6 @@
         matched++;
         score++;
         document.getElementById('score').textContent = score;
-        firstCard.onclick = null;
-        secondCard.onclick = null;
         setTimeout(() => {
           firstCard.style.visibility = 'hidden';
           secondCard.style.visibility = 'hidden';
@@ -147,8 +156,8 @@
         }, 500);
       } else {
         setTimeout(() => {
-          firstCard.classList.add('hidden');
-          secondCard.classList.add('hidden');
+          firstCard.style.backgroundColor = 'white';
+          secondCard.style.backgroundColor = 'white';
           resetCards();
         }, 1000);
       }
@@ -179,6 +188,7 @@
       finished = true;
       endTime = Date.now();
       const timeTaken = Math.floor((endTime - startTime) / 1000);
+      document.getElementById('gameBoard').style.display = 'none';
       socket.emit('gameFinished', {
         sessionId: session,
         name: playerName,
@@ -188,12 +198,24 @@
     }
 
     socket.on('finalResult', result => {
-      const msg = result.tie
-        ? "تعادل بين اللاعبين!"
-        : result.winner === playerName
-          ? "مبروك! أنت الفائز!"
-          : `للأسف خسرت، الفائز هو: ${result.winner}`;
-      document.getElementById('finalResult').textContent = msg;
+      document.getElementById('results').style.display = 'block';
+
+      const players = result.winner
+        ? [result.winner, result.tie ? "تعادل" : "خاسر"]
+        : ["لا يوجد فائز", ""];
+
+      const isPlayer1 = result.winner === playerName;
+
+      const [p1, p2] = result.results;
+
+      document.getElementById('player1Result').textContent = `${p1.name}: ${p1.score} نقطة`;
+      document.getElementById('player2Result').textContent = `${p2.name}: ${p2.score} نقطة`;
+
+      if (result.tie) {
+        document.getElementById('winner').textContent = "تعادل بين اللاعبين!";
+      } else {
+        document.getElementById('winner').textContent = `الفائز هو: ${result.winner}`;
+      }
     });
   </script>
 </body>
