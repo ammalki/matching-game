@@ -82,7 +82,12 @@
 
       // تحويل مباشر إلى صفحة اللعب
       const link = `${location.origin}/game.html?session=${sessionId}&name=${encodeURIComponent(name)}`;
-      window.location.href = link;
+      document.body.innerHTML = `
+  <h2>تم إنشاء الجلسة بنجاح</h2>
+  <p>انسخ الرابط وأرسله للاعب الآخر:</p>
+  <input type="text" value="${link}" id="copyLink" style="width:90%;padding:10px;" readonly onclick="this.select()">
+  <button onclick="window.location.href='${link}'">دخول للعبة</button>
+`;
     }
   </script>
 </body>
