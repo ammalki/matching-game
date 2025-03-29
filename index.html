@@ -65,7 +65,7 @@
   <h1>لعبة الصور المتطابقة</h1>
   <div class="game-setup" id="setupBox">
     <label>ادخل اسمك:</label>
-    <input type="text" id="playerName" placeholder="مثال: موسى">
+    <input type="text" id="playerName" placeholder="مثال: وليد">
 
     <label>اختر عدد البطاقات:</label>
     <select id="cardCount">
@@ -93,6 +93,7 @@
 
   <script>
     let socket;
+    let sessionId = "";
     try {
       socket = io();
     } catch (e) {
@@ -121,7 +122,7 @@
         return;
       }
 
-      const sessionId = Math.floor(10000 + Math.random() * 90000).toString();
+      sessionId = Math.floor(10000 + Math.random() * 90000).toString();
       const payload = { sessionId, name, cards: Number(cards), time: Number(time) };
       debug("إرسال createGameSession: " + JSON.stringify(payload));
       socket.emit('createGameSession', payload);
@@ -131,6 +132,12 @@
       document.getElementById('gameLinkBox').style.display = 'block';
       document.getElementById('gameLink').value = link;
     }
+
+    // تم إضافة هذا الجزء ليبدأ اللعبة تلقائياً عند انضمام اللاعب الآخر
+    socket.on('readyToStart', settings => {
+      debug("اللاعبان جاهزان، بدء اللعبة الآن...");
+      socket.emit('startGameNow', sessionId);
+    });
   </script>
 </body>
 </html>
