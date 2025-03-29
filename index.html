@@ -3,9 +3,134 @@
 <head>
   <meta charset="UTF-8">
   <title>لعبة الصور المتطابقة</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: linear-gradient(to bottom, #2c0b0e, #4e1b20);
+      color: white;
+      padding: 20px;
+    }
+    .game-setup {
+      background-color: #fff3;
+      border-radius: 15px;
+      padding: 20px;
+      display: inline-block;
+      max-width: 90%;
+    }
+    label, select, input {
+      display: block;
+      margin: 10px auto;
+      font-size: 18px;
+      width: 80%;
+    }
+    input[type="text"] {
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+    }
+    select {
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+    }
+    button {
+      padding: 12px 25px;
+      background-color: gold;
+      border: none;
+      border-radius: 15px;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .link-box {
+      margin-top: 20px;
+      background-color: #fff2;
+      padding: 15px;
+      border-radius: 10px;
+      display: none;
+    }
+    #debug {
+      background: #0008;
+      color: #ff0;
+      padding: 10px;
+      margin-top: 15px;
+      font-size: 14px;
+      display: none;
+    }
+  </style>
 </head>
 <body>
-  <h1>يرجى إدخال اسمك لبدء اللعبة</h1>
+  <h1>لعبة الصور المتطابقة</h1>
+  <div class="game-setup" id="setupBox">
+    <label>ادخل اسمك:</label>
+    <input type="text" id="playerName" placeholder="مثال: موسى">
+
+    <label>اختر عدد البطاقات:</label>
+    <select id="cardCount">
+      <option value="30">30 بطاقة (15 صورة)</option>
+      <option value="50">50 بطاقة (25 صورة)</option>
+      <option value="60">60 بطاقة (30 صورة)</option>
+    </select>
+
+    <label>اختر مدة اللعبة:</label>
+    <select id="gameTime">
+      <option value="30">30 ثانية</option>
+      <option value="40">40 ثانية</option>
+      <option value="50">50 ثانية</option>
+    </select>
+
+    <button onclick="createGame()">ابدأ</button>
+  </div>
+
+  <div class="link-box" id="gameLinkBox">
+    <p id="waitingMessage">بانتظار دخول اللاعب الآخر...</p>
+    <input type="text" id="gameLink" readonly onclick="this.select()">
+  </div>
+
+  <div id="debug"></div>
+
+  <script>
+    let socket;
+    try {
+      socket = io();
+    } catch (e) {
+      debug('فشل الاتصال بـ Socket.IO: ' + e.message);
+    }
+
+    function debug(msg) {
+      console.log('[DEBUG]', msg);
+      const box = document.getElementById('debug');
+      box.style.display = 'block';
+      box.innerText = msg;
+    }
+
+    function createGame() {
+      const name = document.getElementById('playerName').value.trim();
+      const cards = document.getElementById('cardCount').value;
+      const time = document.getElementById('gameTime').value;
+
+      if (!name) {
+        alert("يرجى إدخال اسمك.");
+        return;
+      }
+
+      if (!socket || !socket.connected) {
+        debug("الاتصال بـ Socket.IO غير متوفر أو غير نشط.");
+        return;
+      }
+
+      const sessionId = Math.floor(10000 + Math.random() * 90000).toString();
+      const payload = { sessionId, name, cards: Number(cards), time: Number(time) };
+      debug("إرسال createGameSession: " + JSON.stringify(payload));
+      socket.emit('createGameSession', payload);
+
+      const link = `${location.origin}/game.html?session=${sessionId}`;
+      document.getElementById('setupBox').style.display = 'none';
+      document.getElementById('gameLinkBox').style.display = 'block';
+      document.getElementById('gameLink').value = link;
+    }
+  </script>
 </body>
 </html>
