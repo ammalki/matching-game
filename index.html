@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>لعبة الصور المتطابقة</title>
+  <title>إنشاء لعبة الصور المتطابقة</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="/socket.io/socket.io.js"></script>
   <style>
@@ -26,12 +26,7 @@
       font-size: 18px;
       width: 80%;
     }
-    input[type="text"] {
-      padding: 10px;
-      border-radius: 10px;
-      border: none;
-    }
-    select {
+    input[type="text"], select {
       padding: 10px;
       border-radius: 10px;
       border: none;
@@ -44,26 +39,11 @@
       font-size: 20px;
       cursor: pointer;
     }
-    .link-box {
-      margin-top: 20px;
-      background-color: #fff2;
-      padding: 15px;
-      border-radius: 10px;
-      display: none;
-    }
-    #debug {
-      background: #0008;
-      color: #ff0;
-      padding: 10px;
-      margin-top: 15px;
-      font-size: 14px;
-      display: none;
-    }
   </style>
 </head>
 <body>
   <h1>لعبة الصور المتطابقة</h1>
-  <div class="game-setup" id="setupBox">
+  <div class="game-setup">
     <label>ادخل اسمك:</label>
     <input type="text" id="playerName" placeholder="مثال: وليد">
 
@@ -84,60 +64,26 @@
     <button onclick="createGame()">ابدأ</button>
   </div>
 
-  <div class="link-box" id="gameLinkBox">
-    <p id="waitingMessage">بانتظار دخول اللاعب الآخر...</p>
-    <input type="text" id="gameLink" readonly onclick="this.select()">
-  </div>
-
-  <div id="debug"></div>
-
   <script>
-    let socket;
-    let sessionId = "";
-    try {
-      socket = io();
-    } catch (e) {
-      debug('فشل الاتصال بـ Socket.IO: ' + e.message);
-    }
-
-    function debug(msg) {
-      console.log('[DEBUG]', msg);
-      const box = document.getElementById('debug');
-      box.style.display = 'block';
-      box.innerText = msg;
-    }
-
+    const socket = io();
     function createGame() {
       const name = document.getElementById('playerName').value.trim();
       const cards = document.getElementById('cardCount').value;
       const time = document.getElementById('gameTime').value;
+      if (!name) return alert("يرجى إدخال اسمك.");
 
-      if (!name) {
-        alert("يرجى إدخال اسمك.");
-        return;
-      }
+      const sessionId = Math.floor(10000 + Math.random() * 90000).toString();
+      socket.emit('createGameSession', {
+        sessionId,
+        name,
+        cards: Number(cards),
+        time: Number(time)
+      });
 
-      if (!socket || !socket.connected) {
-        debug("الاتصال بـ Socket.IO غير متوفر أو غير نشط.");
-        return;
-      }
-
-      sessionId = Math.floor(10000 + Math.random() * 90000).toString();
-      const payload = { sessionId, name, cards: Number(cards), time: Number(time) };
-      debug("إرسال createGameSession: " + JSON.stringify(payload));
-      socket.emit('createGameSession', payload);
-
-      const link = `${location.origin}/game.html?session=${sessionId}`;
-      document.getElementById('setupBox').style.display = 'none';
-      document.getElementById('gameLinkBox').style.display = 'block';
-      document.getElementById('gameLink').value = link;
+      // تحويل مباشر إلى صفحة اللعب
+      const link = `${location.origin}/game.html?session=${sessionId}&name=${encodeURIComponent(name)}`;
+      window.location.href = link;
     }
-
-    // تم إضافة هذا الجزء ليبدأ اللعبة تلقائياً عند انضمام اللاعب الآخر
-    socket.on('readyToStart', settings => {
-      debug("اللاعبان جاهزان، بدء اللعبة الآن...");
-      socket.emit('startGameNow', sessionId);
-    });
   </script>
 </body>
 </html>
