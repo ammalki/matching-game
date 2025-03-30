@@ -78,7 +78,25 @@
     const socket = io();
     const query = new URLSearchParams(location.search);
     const session = query.get('session');
-    const playerName = query.get('name') || prompt("ادخل اسمك:");
+    let playerName = query.get('name');
+const session = query.get('session');
+
+if (!playerName) {
+  document.body.innerHTML = `
+    <h2>ادخل اسمك للانضمام إلى اللعبة</h2>
+    <input type="text" id="playerInput" placeholder="اسمك" style="padding:10px;font-size:18px;">
+    <br><br>
+    <button onclick="startWithName()">انضمام</button>
+  `;
+
+  window.startWithName = function () {
+    const name = document.getElementById('playerInput').value.trim();
+    if (!name) return alert("يرجى إدخال الاسم");
+    location.href = \`/game.html?session=${session}&name=\${encodeURIComponent(name)}\`;
+  };
+} else {
+  startGame(); // إذا الاسم موجود مسبقًا
+}
     document.getElementById('playerNameDisplay').textContent = playerName;
 
     let score = 0;
