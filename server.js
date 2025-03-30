@@ -22,8 +22,8 @@ app.get('/s/:code', (req, res) => {
   }
 
   // إعادة التوجيه إلى game.html مع البيانات
-  const redirectUrl = `/game.html?session=${data.sessionId}&name=${encodeURIComponent(data.name)}`;
-  res.redirect(redirectUrl);
+  const redirectUrl = `/game.html?session=${data.sessionId}`;
+res.redirect(redirectUrl);
 });
 
 // ====== WebSocket Events ======
