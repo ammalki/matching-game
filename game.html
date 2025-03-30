@@ -23,6 +23,10 @@
       background-color: white;
       cursor: pointer;
       transition: all 0.3s ease;
+      color: transparent;
+    }
+    .card.revealed {
+      color: black;
     }
     .grid {
       display: grid;
@@ -131,7 +135,7 @@
         card.className = 'card';
         card.dataset.value = emoji;
         card.dataset.index = index;
-        card.innerText = emoji;
+        card.dataset.revealed = "false";
         card.onclick = () => handleCardClick(card);
         grid.appendChild(card);
       });
@@ -141,8 +145,9 @@
     }
 
     function handleCardClick(card) {
-      if (lock || card.style.visibility === 'hidden') return;
-      card.style.backgroundColor = '#ddd';
+      if (lock || card.dataset.revealed === "true") return;
+      card.textContent = card.dataset.value;
+      card.classList.add("revealed");
 
       if (!firstCard) {
         firstCard = card;
@@ -158,6 +163,8 @@
         matched++;
         score++;
         document.getElementById('score').textContent = score;
+        firstCard.dataset.revealed = "true";
+        secondCard.dataset.revealed = "true";
         setTimeout(() => {
           firstCard.style.visibility = 'hidden';
           secondCard.style.visibility = 'hidden';
@@ -165,8 +172,10 @@
         }, 500);
       } else {
         setTimeout(() => {
-          firstCard.style.backgroundColor = 'white';
-          secondCard.style.backgroundColor = 'white';
+          firstCard.textContent = '';
+          secondCard.textContent = '';
+          firstCard.classList.remove("revealed");
+          secondCard.classList.remove("revealed");
           resetCards();
         }, 1000);
       }
