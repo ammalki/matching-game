@@ -1,4 +1,6 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const app = express();
@@ -6,8 +8,22 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
+const SESSIONS_FILE = path.join(__dirname, 'sessions.json');
 
-const sessions = {};
+function loadSessions() {
+  try {
+    const data = fs.readFileSync(SESSIONS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (err) {
+    return {};
+  }
+}
+
+function saveSessions(sessions) {
+  fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions, null, 2));
+}
+
+let sessions = loadSessions();
 const shortLinks = {};
 
 app.use(express.static(__dirname));
@@ -30,6 +46,7 @@ io.on('connection', socket => {
         ready: 0,
         results: []
       };
+      saveSessions(sessions);
     }
 
     const shortCode = Math.floor(10000 + Math.random() * 90000).toString();
@@ -43,24 +60,22 @@ io.on('connection', socket => {
     if (sessions[sessionId].players.length === 2) {
       io.to(sessionId).emit('readyToStart', sessions[sessionId].settings);
     }
+
+    saveSessions(sessions);
   });
 
   socket.on('joinSession', ({ sessionId, name }) => {
-    if (!sessions[sessionId]) {
-      sessions[sessionId] = {
-        settings: { cards: 30, time: 30 },
-        players: [],
-        ready: 0,
-        results: []
-      };
-    }
+    if (!sessions[sessionId]) return;
 
     sessions[sessionId].players.push({ id: socket.id, name });
     socket.join(sessionId);
     io.to(sessionId).emit('playerJoined', sessions[sessionId].players.map(p => p.name));
+
     if (sessions[sessionId].players.length === 2) {
       io.to(sessionId).emit('readyToStart', sessions[sessionId].settings);
     }
+
+    saveSessions(sessions);
   });
 
   socket.on('startGameNow', sessionId => {
@@ -91,17 +106,25 @@ io.on('connection', socket => {
       }
       io.to(sessionId).emit('finalResult', { winner, tie, results: session.results });
       delete sessions[sessionId];
+      saveSessions(sessions);
     }
   });
 
   socket.on('disconnect', () => {
+    let updated = false;
     for (const sessionId in sessions) {
       const session = sessions[sessionId];
+      const initialLength = session.players.length;
       session.players = session.players.filter(p => p.id !== socket.id);
+      if (initialLength !== session.players.length) {
+        updated = true;
+      }
       if (session.players.length === 0) {
         delete sessions[sessionId];
+        updated = true;
       }
     }
+    if (updated) saveSessions(sessions);
   });
 });
 
