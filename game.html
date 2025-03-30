@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<!DOCTYPE html><html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <title>لعب الصور المتطابقة</title>
@@ -55,50 +54,22 @@
   </style>
 </head>
 <body>
-  <h1>لعبة الصور المتطابقة</h1>
-
-  <div id="waiting">بانتظار دخول اللاعب الآخر...</div>
-
-  <div id="gameBoard">
+  <h1>لعبة الصور المتطابقة</h1>  <div id="waiting">بانتظار دخول اللاعب الآخر...</div>  <div id="gameBoard">
     <div id="info">
       الاسم: <span id="playerNameDisplay"></span> |
       النقاط: <span id="score">0</span> |
       الوقت: <span id="timer">--</span>
     </div>
     <div class="grid" id="cardGrid"></div>
-  </div>
-
-  <div id="results">
+  </div>  <div id="results">
     <div class="player-box" id="player1Result"></div>
     <div class="player-box" id="player2Result"></div>
     <div id="winner"></div>
-  </div>
-
-  <script>
+  </div>  <script>
     const socket = io();
     const query = new URLSearchParams(location.search);
     const session = query.get('session');
     let playerName = query.get('name');
-const session = query.get('session');
-
-if (!playerName) {
-  document.body.innerHTML = `
-    <h2>ادخل اسمك للانضمام إلى اللعبة</h2>
-    <input type="text" id="playerInput" placeholder="اسمك" style="padding:10px;font-size:18px;">
-    <br><br>
-    <button onclick="startWithName()">انضمام</button>
-  `;
-
-  window.startWithName = function () {
-    const name = document.getElementById('playerInput').value.trim();
-    if (!name) return alert("يرجى إدخال الاسم");
-    location.href = \`/game.html?session=${session}&name=\${encodeURIComponent(name)}\`;
-  };
-} else {
-  startGame(); // إذا الاسم موجود مسبقًا
-}
-    document.getElementById('playerNameDisplay').textContent = playerName;
-
     let score = 0;
     let matched = 0;
     let totalPairs = 0;
@@ -109,8 +80,28 @@ if (!playerName) {
     let lock = false;
     let startTime, endTime;
 
-    socket.emit('joinSession', { sessionId: session, name: playerName });
-    document.getElementById('waiting').style.display = 'block';
+    if (!playerName) {
+      document.body.innerHTML = `
+        <h2>ادخل اسمك للانضمام إلى اللعبة</h2>
+        <input type="text" id="playerInput" placeholder="اسمك" style="padding:10px;font-size:18px;">
+        <br><br>
+        <button onclick="startWithName()">انضمام</button>
+      `;
+
+      window.startWithName = function () {
+        const name = document.getElementById('playerInput').value.trim();
+        if (!name) return alert("يرجى إدخال الاسم");
+        location.href = `/game.html?session=${session}&name=${encodeURIComponent(name)}`;
+      };
+    } else {
+      startGame();
+    }
+
+    function startGame() {
+      document.getElementById('playerNameDisplay').textContent = playerName;
+      socket.emit('joinSession', { sessionId: session, name: playerName });
+      document.getElementById('waiting').style.display = 'block';
+    }
 
     socket.on('playerJoined', names => {
       document.getElementById('waiting').textContent = `تم الانضمام: ${names.join(' و ')}`;
@@ -218,14 +209,7 @@ if (!playerName) {
     socket.on('finalResult', result => {
       document.getElementById('results').style.display = 'block';
 
-      const players = result.winner
-        ? [result.winner, result.tie ? "تعادل" : "خاسر"]
-        : ["لا يوجد فائز", ""];
-
-      const isPlayer1 = result.winner === playerName;
-
       const [p1, p2] = result.results;
-
       document.getElementById('player1Result').textContent = `${p1.name}: ${p1.score} نقطة`;
       document.getElementById('player2Result').textContent = `${p2.name}: ${p2.score} نقطة`;
 
@@ -235,6 +219,5 @@ if (!playerName) {
         document.getElementById('winner').textContent = `الفائز هو: ${result.winner}`;
       }
     });
-  </script>
-</body>
+  </script></body>
 </html>
