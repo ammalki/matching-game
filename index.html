@@ -39,13 +39,20 @@
       font-size: 20px;
       cursor: pointer;
     }
+    .link-box {
+      margin-top: 20px;
+      background-color: #fff2;
+      padding: 15px;
+      border-radius: 10px;
+      display: none;
+    }
   </style>
 </head>
 <body>
   <h1>لعبة الصور المتطابقة</h1>
-  <div class="game-setup">
+  <div class="game-setup" id="setupBox">
     <label>ادخل اسمك:</label>
-    <input type="text" id="playerName" placeholder="مثال: وليد">
+    <input type="text" id="playerName" placeholder="مثال: رشا">
 
     <label>اختر عدد البطاقات:</label>
     <select id="cardCount">
@@ -64,30 +71,48 @@
     <button onclick="createGame()">ابدأ</button>
   </div>
 
+  <div class="link-box" id="shortLinkBox">
+    <p>انسخ هذا الرابط وشاركه مع اللاعب الآخر:</p>
+    <input type="text" id="shortLink" readonly onclick="this.select()" style="width:90%;padding:10px;">
+    <br><br>
+    <button id="goPlayBtn" style="display:none;" onclick="goToGame()">دخول للعبة</button>
+  </div>
+
   <script>
     const socket = io();
+    let sessionId = "";
+    let playerName = "";
+
     function createGame() {
-      const name = document.getElementById('playerName').value.trim();
+      playerName = document.getElementById('playerName').value.trim();
       const cards = document.getElementById('cardCount').value;
       const time = document.getElementById('gameTime').value;
-      if (!name) return alert("يرجى إدخال اسمك.");
 
-      const sessionId = Math.floor(10000 + Math.random() * 90000).toString();
+      if (!playerName) {
+        alert("يرجى إدخال اسمك.");
+        return;
+      }
+
+      sessionId = Math.floor(100000 + Math.random() * 900000).toString();
       socket.emit('createGameSession', {
         sessionId,
-        name,
+        name: playerName,
         cards: Number(cards),
         time: Number(time)
       });
 
-      // تحويل مباشر إلى صفحة اللعب
-      const link = `${location.origin}/game.html?session=${sessionId}&name=${encodeURIComponent(name)}`;
-      document.body.innerHTML = `
-  <h2>تم إنشاء الجلسة بنجاح</h2>
-  <p>انسخ الرابط وأرسله للاعب الآخر:</p>
-  <input type="text" value="${link}" id="copyLink" style="width:90%;padding:10px;" readonly onclick="this.select()">
-  <button onclick="window.location.href='${link}'">دخول للعبة</button>
-`;
+      document.getElementById('setupBox').style.display = 'none';
+    }
+
+    socket.on('shortLink', code => {
+      const shortURL = `${location.origin}/s/${code}`;
+      document.getElementById('shortLink').value = shortURL;
+      document.getElementById('shortLinkBox').style.display = 'block';
+      document.getElementById('goPlayBtn').style.display = 'inline-block';
+    });
+
+    function goToGame() {
+      window.location.href = `/game.html?session=${sessionId}&name=${encodeURIComponent(playerName)}`;
     }
   </script>
 </body>
