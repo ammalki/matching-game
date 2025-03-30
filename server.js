@@ -1,4 +1,3 @@
-
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -7,10 +6,27 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
+
+// تخزين الجلسات وروابطها المختصرة
 const sessions = {};
+const shortLinks = {}; // key: shortCode, value: { sessionId, name, cards, time }
 
 app.use(express.static(__dirname));
 
+// ====== توجيه الروابط المختصرة ======
+app.get('/s/:code', (req, res) => {
+  const code = req.params.code;
+  const data = shortLinks[code];
+  if (!data) {
+    return res.status(404).send('الرابط غير صالح أو انتهت صلاحيته.');
+  }
+
+  // إعادة التوجيه إلى game.html مع البيانات
+  const redirectUrl = `/game.html?session=${data.sessionId}&name=${encodeURIComponent(data.name)}`;
+  res.redirect(redirectUrl);
+});
+
+// ====== WebSocket Events ======
 io.on('connection', socket => {
   socket.on('createGameSession', ({ sessionId, name, cards, time }) => {
     if (!sessions[sessionId]) {
@@ -21,9 +37,17 @@ io.on('connection', socket => {
         results: []
       };
     }
+
+    // توليد كود مختصر
+    const shortCode = Math.floor(10000 + Math.random() * 90000).toString();
+    shortLinks[shortCode] = { sessionId, name, cards, time };
+
+    socket.emit('shortLink', shortCode); // إرسال الكود المختصر للواجهة
+
     sessions[sessionId].players.push({ id: socket.id, name });
     socket.join(sessionId);
     io.to(sessionId).emit('playerJoined', sessions[sessionId].players.map(p => p.name));
+
     if (sessions[sessionId].players.length === 2) {
       io.to(sessionId).emit('readyToStart', sessions[sessionId].settings);
     }
@@ -65,7 +89,7 @@ io.on('connection', socket => {
         else if (p2.time < p1.time) winner = p2.name;
         else tie = true;
       }
-      io.to(sessionId).emit('finalResult', { winner, tie });
+      io.to(sessionId).emit('finalResult', { winner, tie, results: session.results });
       delete sessions[sessionId];
     }
   });
