@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>انضمام إلى اللعبة</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom, #2c0b0e, #4e1b20);
+      color: white;
+      text-align: center;
+      padding: 40px;
+    }
+    input[type="text"] {
+      width: 80%;
+      padding: 12px;
+      margin: 15px 0;
+      border-radius: 10px;
+      border: none;
+      font-size: 18px;
+    }
+    button {
+      padding: 12px 30px;
+      font-size: 20px;
+      background-color: gold;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2>ادخل اسمك للانضمام إلى اللعبة</h2>
+  <input type="text" id="playerName" placeholder="مثال: محمد">
+  <br>
+  <button onclick="joinGame()">انضمام</button>
+
+  <script>
+    const query = new URLSearchParams(window.location.search);
+    const sessionId = query.get("session");
+
+    function joinGame() {
+      const name = document.getElementById("playerName").value.trim();
+      if (!name) return alert("يرجى إدخال الاسم");
+
+      // الانتقال إلى صفحة اللعب بالرابط الكامل
+      window.location.href = `/game.html?session=${sessionId}&name=${encodeURIComponent(name)}`;
+    }
+  </script>
+</body>
+</html>
