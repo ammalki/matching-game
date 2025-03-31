@@ -98,6 +98,11 @@
 
     socket.on('playerJoined', names => {
       document.getElementById('waiting').textContent = `تم الانضمام: ${names.join(' و ')}`;
+
+      // إعادة إرسال الانضمام إذا لم يتم احتساب اللاعب الحالي
+      if (!names.includes(playerName)) {
+        socket.emit('joinSession', { sessionId: session, name: playerName });
+      }
     });
 
     socket.on('readyToStart', settings => {
