@@ -1,3 +1,4 @@
+
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -11,7 +12,6 @@ const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 const SESSIONS_FILE = path.join(__dirname, 'sessions.json');
 
-// تحميل الجلسات من الملف
 function loadSessions() {
   try {
     const data = fs.readFileSync(SESSIONS_FILE, 'utf8');
@@ -21,7 +21,6 @@ function loadSessions() {
   }
 }
 
-// حفظ الجلسات في الملف
 function saveSessions(sessions) {
   fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions, null, 2));
 }
@@ -29,20 +28,17 @@ function saveSessions(sessions) {
 let sessions = loadSessions();
 const shortLinks = {};
 
-// تقديم الملفات الثابتة
 app.use(express.static(__dirname));
 
-// رابط مختصر للجلسة
 app.get('/s/:code', (req, res) => {
   const code = req.params.code;
   const data = shortLinks[code];
   if (!data) {
-    return res.status(404).send('الرابط غير صالح أو انتهت صلاحيته.');
+    return res.status(404).send('ط§ظ„ط±ط§ط¨ط· ط؛ظٹط± طµط§ظ„ط­ ط£ظˆ ط§ظ†طھظ‡طھ طµظ„ط§ط­ظٹطھظ‡.');
   }
   res.redirect(`/join.html?session=${code}`);
 });
 
-// API لإظهار الجلسات المفتوحة
 app.get('/sessions', (req, res) => {
   const openSessions = Object.entries(sessions)
     .filter(([id, s]) => s.players.length === 1 && s.ready === 1)
@@ -50,9 +46,7 @@ app.get('/sessions', (req, res) => {
   res.json(openSessions);
 });
 
-// عند الاتصال بـ Socket.io
 io.on('connection', socket => {
-  // إنشاء جلسة جديدة
   socket.on('createGameSession', ({ sessionId, name, cards, time }) => {
     if (!sessions[sessionId]) {
       sessions[sessionId] = {
@@ -79,7 +73,6 @@ io.on('connection', socket => {
     saveSessions(sessions);
   });
 
-  // انضمام لاعب إلى جلسة
   socket.on('joinSession', ({ sessionId, name }) => {
     if (!sessions[sessionId]) return;
 
@@ -98,17 +91,20 @@ io.on('connection', socket => {
     saveSessions(sessions);
   });
 
-  // بدء اللعبة عندما يكون الجميع جاهزين
   socket.on('startGameNow', sessionId => {
     const session = sessions[sessionId];
     if (!session) return;
-    session.ready++;
+
+    if (session.ready < 2) {
+      session.ready++;
+      saveSessions(sessions);
+    }
+
     if (session.ready === 2) {
       io.to(sessionId).emit('startGame');
     }
   });
 
-  // انتهاء اللعبة وإرسال النتيجة
   socket.on('gameFinished', ({ sessionId, name, score, time }) => {
     const session = sessions[sessionId];
     if (!session) return;
@@ -132,7 +128,6 @@ io.on('connection', socket => {
     }
   });
 
-  // عند انقطاع الاتصال
   socket.on('disconnect', () => {
     let updated = false;
     for (const sessionId in sessions) {
