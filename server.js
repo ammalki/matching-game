@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -10,6 +11,7 @@ const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 const SESSIONS_FILE = path.join(__dirname, 'sessions.json');
 
+// تحميل الجلسات من الملف
 function loadSessions() {
   try {
     const data = fs.readFileSync(SESSIONS_FILE, 'utf8');
@@ -19,6 +21,7 @@ function loadSessions() {
   }
 }
 
+// حفظ الجلسات في الملف
 function saveSessions(sessions) {
   fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions, null, 2));
 }
@@ -26,9 +29,10 @@ function saveSessions(sessions) {
 let sessions = loadSessions();
 const shortLinks = {};
 
+// تقديم الملفات الثابتة
 app.use(express.static(__dirname));
 
-// تحويل رابط مختصر إلى sessionId
+// رابط مختصر للجلسة
 app.get('/s/:code', (req, res) => {
   const code = req.params.code;
   const data = shortLinks[code];
@@ -38,7 +42,17 @@ app.get('/s/:code', (req, res) => {
   res.redirect(`/join.html?session=${code}`);
 });
 
+// API لإظهار الجلسات المفتوحة
+app.get('/sessions', (req, res) => {
+  const openSessions = Object.entries(sessions)
+    .filter(([id, s]) => s.players.length === 1)
+    .map(([id, s]) => ({ sessionId: id, player: s.players[0]?.name || '---' }));
+  res.json(openSessions);
+});
+
+// عند الاتصال بـ Socket.io
 io.on('connection', socket => {
+  // إنشاء جلسة جديدة
   socket.on('createGameSession', ({ sessionId, name, cards, time }) => {
     if (!sessions[sessionId]) {
       sessions[sessionId] = {
@@ -65,10 +79,15 @@ io.on('connection', socket => {
     saveSessions(sessions);
   });
 
+  // انضمام لاعب إلى جلسة
   socket.on('joinSession', ({ sessionId, name }) => {
     if (!sessions[sessionId]) return;
 
-    sessions[sessionId].players.push({ id: socket.id, name });
+    const alreadyJoined = sessions[sessionId].players.find(p => p.id === socket.id);
+    if (!alreadyJoined) {
+      sessions[sessionId].players.push({ id: socket.id, name });
+    }
+
     socket.join(sessionId);
     io.to(sessionId).emit('playerJoined', sessions[sessionId].players.map(p => p.name));
 
@@ -79,6 +98,7 @@ io.on('connection', socket => {
     saveSessions(sessions);
   });
 
+  // بدء اللعبة عندما يكون الجميع جاهزين
   socket.on('startGameNow', sessionId => {
     const session = sessions[sessionId];
     if (!session) return;
@@ -88,6 +108,7 @@ io.on('connection', socket => {
     }
   });
 
+  // انتهاء اللعبة وإرسال النتيجة
   socket.on('gameFinished', ({ sessionId, name, score, time }) => {
     const session = sessions[sessionId];
     if (!session) return;
@@ -111,6 +132,7 @@ io.on('connection', socket => {
     }
   });
 
+  // عند انقطاع الاتصال
   socket.on('disconnect', () => {
     let updated = false;
     for (const sessionId in sessions) {
