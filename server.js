@@ -28,13 +28,14 @@ const shortLinks = {};
 
 app.use(express.static(__dirname));
 
+// تحويل رابط مختصر إلى sessionId
 app.get('/s/:code', (req, res) => {
   const code = req.params.code;
   const data = shortLinks[code];
   if (!data) {
     return res.status(404).send('الرابط غير صالح أو انتهت صلاحيته.');
   }
-  res.redirect(`/game.html?session=${data.sessionId}`);
+  res.redirect(`/join.html?session=${code}`);
 });
 
 io.on('connection', socket => {
@@ -49,7 +50,7 @@ io.on('connection', socket => {
       saveSessions(sessions);
     }
 
-    const shortCode = Math.floor(10000 + Math.random() * 90000).toString();
+    const shortCode = sessionId;
     shortLinks[shortCode] = { sessionId };
     socket.emit('shortLink', shortCode);
 
