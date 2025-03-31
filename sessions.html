@@ -42,34 +42,42 @@
   <div id="sessionsList">جارٍ تحميل الجلسات...</div>
 
   <script>
-    fetch('/sessions')
-      .then(res => res.json())
-      .then(data => {
-        const list = document.getElementById('sessionsList');
-        list.innerHTML = '';
-        if (data.length === 0) {
-          list.innerHTML = '<p>لا توجد جلسات متاحة الآن</p>';
-          return;
-        }
+    function loadSessions() {
+      fetch('/sessions')
+        .then(res => res.json())
+        .then(data => {
+          const list = document.getElementById('sessionsList');
+          list.innerHTML = '';
+          if (data.length === 0) {
+            list.innerHTML = '<p>لا توجد جلسات متاحة حالياً</p>';
+            return;
+          }
 
-        data.forEach(session => {
-          const box = document.createElement('div');
-          box.className = 'session-box';
-          box.innerHTML = `
-            <strong>مع ${session.player}</strong><br>
-            <input type="text" placeholder="اسمك" id="name-${session.sessionId}">
-            <br>
-            <button onclick="join('${session.sessionId}')">انضمام</button>
-          `;
-          list.appendChild(box);
+          data.forEach(session => {
+            const box = document.createElement('div');
+            box.className = 'session-box';
+            box.innerHTML = `
+              <strong>مع ${session.player}</strong><br>
+              <input type="text" placeholder="اسمك" id="name-${session.sessionId}">
+              <br>
+              <button onclick="join('${session.sessionId}')">انضمام</button>
+            `;
+            list.appendChild(box);
+          });
+        })
+        .catch(() => {
+          document.getElementById('sessionsList').innerHTML = '<p>فشل في تحميل الجلسات.</p>';
         });
-      });
+    }
 
     function join(sessionId) {
       const name = document.getElementById(`name-${sessionId}`).value.trim();
       if (!name) return alert('يرجى إدخال الاسم');
       window.location.href = `/game.html?session=${sessionId}&name=${encodeURIComponent(name)}`;
     }
+
+    loadSessions(); // أول تحميل
+    setInterval(loadSessions, 3000); // تحديث كل 3 ثوانٍ
   </script>
 </body>
 </html>
