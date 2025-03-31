@@ -45,7 +45,7 @@ app.get('/s/:code', (req, res) => {
 // API لإظهار الجلسات المفتوحة
 app.get('/sessions', (req, res) => {
   const openSessions = Object.entries(sessions)
-    .filter(([id, s]) => s.players.length === 1)
+    .filter(([id, s]) => s.players.length === 1 && s.ready === 1)
     .map(([id, s]) => ({ sessionId: id, player: s.players[0]?.name || '---' }));
   res.json(openSessions);
 });
